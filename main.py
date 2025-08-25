@@ -84,6 +84,8 @@ def check_system_prompt():
 
     If you don't know which file contains the needed information, first use 'get_files_info' to list the available files and directories, then proceed based on what you discover.
     Never ask the user for file or directory names; instead, use your available tools to find them.
+
+    If you are asked to fix a bug, read .py file contents until you find the likely issue and then make the correction to the code in the file. Leave a comment at the bottom of the modified file saying what was changed prefixed by "BUGFIX:". provide a summary of the change in your response as well.
     """
     return system_prompt
 

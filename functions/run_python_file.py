@@ -44,6 +44,15 @@ schema_run_python_file = types.FunctionDeclaration(
                 type=types.Type.STRING,
                 description="The file path to open the required file at. If the file is not a .py file, raise an error.",
             ),
+                "working_directory": types.Schema(
+                type=types.Type.STRING,
+                description="the working directory for the file to run from",
+            ),
+                "args": types.Schema(
+                type=types.Type.ARRAY,
+                description="The file path to open the required file at. If the file is not a .py file, raise an error.",
+                items=types.Schema(type=types.Type.STRING),
+            ),
         },
     ),
 )
