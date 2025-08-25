@@ -31,9 +31,9 @@ def get_user_prompt():
 
 
 #Gets a response from the Gemini LLM using the user prompt.
-def get_response(user_prompt,verbose,available_functions):
+def get_response(messages,verbose,available_functions):
     system_prompt = check_system_prompt()
-    response = client.models.generate_content(model = "gemini-2.0-flash-001", contents=user_prompt,
+    response = client.models.generate_content(model = "gemini-2.0-flash-001", contents=messages,
                                               config=types.GenerateContentConfig(tools=[available_functions], system_instruction=system_prompt))
 
     #Prints results based on flags
@@ -43,19 +43,23 @@ def get_response(user_prompt,verbose,available_functions):
         print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
     
     #add any function calls
+    function_result = None
     if response.function_calls:
         for function_call_part in response.function_calls:
             function_result = call_function(function_call_part, verbose)
-            if function_result.parts[0].function_response.response:
+            # Access the correct key in the response
+            result = function_result.parts[0].function_response.response["result"]
+            if result:
                 if verbose:
-                    print(f"-> {function_result.parts[0].function_response.response}")
+                    print(f"-> {result}")
             else:
-                raise exception("Fatal error")
+                raise Exception("Fatal error: No result from function call")
     else:
-        print(response.text)
+        # print(response.text)
+        pass
 
 
-    return response
+    return response, function_result
 
 #Checks for the verbose flag and returns true for use in other functions
 def check_verbose():
@@ -77,6 +81,9 @@ def check_system_prompt():
     - Write or overwrite files
 
     All paths you provide should be relative to the working directory. You do not need to specify the working directory in your function calls as it is automatically injected for security reasons.
+
+    If you don't know which file contains the needed information, first use 'get_files_info' to list the available files and directories, then proceed based on what you discover.
+    Never ask the user for file or directory names; instead, use your available tools to find them.
     """
     return system_prompt
 
@@ -134,14 +141,47 @@ def call_function(function_call_part, verbose=False):
             ],
         )
 
+#iterates through a response candidates and adds them to the messages list and then adds the function result
+def update_message(messages,response,function_result):
+    for candidate in response.candidates:
+        messages.append(candidate.content)
+
+    if function_result is not None:
+        messages.append(function_result)
+
+    return messages
+
+def run_conversation(messages, verbose, available_functions):
+    for i in range(20):
+        try:
+            response, function_result = get_response(messages, verbose, available_functions)
+            messages = update_message(messages, response, function_result)
+            
+            # Only print the final full answer (not plans, not when there's a function call)
+            if not response.function_calls and response.text:
+                print("Final response:")
+                print(response.text)
+                break
+
+        except Exception as e:
+            handle_error(e)
+            break
+
+def handle_error(e):
+    raise Exception(f"an error has occured: {e}")
+
+def final_response(response):
+    if response.text:
+        return True
+    return False
 
 def main():
 
     available_functions = get_functions()
     messages = get_user_prompt()
     verbose = check_verbose()
-    response = get_response(messages,verbose,available_functions)
-    
+    run_conversation(messages,verbose,available_functions)
+
 
         
 
